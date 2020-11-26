@@ -1,0 +1,35 @@
+syntax = "proto3";
+package chat;
+
+message Propuesta{
+	string body = 1;
+}
+
+message Respuesta {
+    string body = 1;
+}
+
+message Message {
+    string nombre = 1;
+    string parte = 2;
+    uint64 numPartes =3;
+    bytes buffer = 4;
+    
+}
+
+message Chunk {
+    string nombre = 1;
+    string parte = 2;
+    uint64 numPartes =3;
+    bytes buffer = 4;
+    
+}
+
+service ChatService {
+	rpc SayHola(Respuesta) returns (Respuesta){}
+    rpc SubirChunk(Chunk) returns (Respuesta){}
+	//rpc ConfirmarPropuestas(Propuesta)returns (Respuesta){}
+	rpc EnviarPropuesta(Propuesta) returns (Respuesta){}
+	rpc PedirChunks(Respuesta) returns (Respuesta) {}
+	rpc DescargarChunk(Respuesta) returns (Message){}
+}
