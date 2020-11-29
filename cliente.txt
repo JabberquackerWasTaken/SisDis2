@@ -1,0 +1,96 @@
+package main
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"log"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/JabberquackerWasTaken/SisDis2/chat"
+	"google.golang.org/grpc"
+)
+
+func separarArchivo() {
+
+	var con1 *grpc.ClientConn
+	con1, err := grpc.Dial(":9000", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Error: %s", err)
+	}
+
+	defer con1.Close()
+	c1 := chat.NewChatServiceClient(con1)
+
+	var request = bufio.NewReader(os.Stdin)
+	for {
+		fmt.Println("----------------------------")
+		fmt.Printf("Ingrese una opcion de Orden:")
+		libro, _ := request.ReadString('\n')
+		libro = strings.ToLower(strings.Trim(libro, " \r\n"))
+		fileToBeChunked := "./" + libro + ".pdf"
+
+		file, err := os.Open(fileToBeChunked)
+
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		defer file.Close()
+
+		fileInfo, _ := file.Stat()
+
+		var fileSize int64 = fileInfo.Size()
+
+		const fileChunk = 250 * (1 << 10)
+		totalPartsNum := uint64(math.Ceil(float64(fileSize) / float64(fileChunk)))
+
+		fmt.Printf("Splitting to %d pieces.\n", totalPartsNum)
+
+		for i := uint64(0); i < totalPartsNum; i++ {
+
+			partSize := int(math.Min(fileChunk, float64(fileSize-int64(i*fileChunk))))
+			partBuffer := make([]byte, partSize)
+
+			file.Read(partBuffer)
+
+			message := chat.Chunk{
+				Nombre:    libro,
+				Parte:     strconv.FormatUint(i, 10),
+				NumPartes: totalPartsNum,
+				Buffer:    partBuffer,
+			}
+
+			var response *chat.Message
+
+			response, _ = c1.SubirChunk(context.Background(), &message)
+			log.Printf("Holi 1 %s", response.Body)
+		}
+	}
+}
+
+func main() {
+
+	var request = bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Println("----------------------------")
+		fmt.Println("Ingrese una opcion de Orden:")
+		fmt.Println("1.-Cargar Libro")
+		fmt.Println("2.-Descargar Libro")
+		fmt.Println("----------------------------")
+		fmt.Print("Opcion: ")
+		text, _ := request.ReadString('\n')
+		text = strings.ToLower(strings.Trim(text, " \r\n"))
+		if strings.Compare(text, "1") == 0 {
+			separarArchivo()
+		}
+		if strings.Compare(text, "2") == 0 {
+			separarArchivo()
+		}
+	}
+}
